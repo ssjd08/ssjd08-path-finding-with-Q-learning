@@ -131,5 +131,5 @@ class SDN_Network_Path_Finding_With_Qlearning:
             thread.join()
 
 if __name__ == "__main__":
-    x = SDN_Network_Path_Finfing_With_Qlearning("h2", "h5")
+    x = SDN_Network_Path_Finding_With_Qlearning("h2", "h5")
     x.run()
