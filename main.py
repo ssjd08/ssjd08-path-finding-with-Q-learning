@@ -4,7 +4,7 @@ from q_learning import Q_Learning_Path_Finding
 import threading
 import time
 import os
-
+import networkx as nx
 
 
 class SDN_Network_Path_Finding_With_Qlearning:
@@ -104,6 +104,54 @@ class SDN_Network_Path_Finding_With_Qlearning:
         print(f"Shortest path found using Dijkstra's algorithm: {path} in {end_time - start_time} seconds")
         print("----------------------------------")
 
+    def find_multiple_paths_dijkstra(self, path_number):
+        """
+        Find multiple paths between the first and last switches in the network using Dijkstra's algorithm.
+        Include the source and destination hosts in the paths.
+        
+        Parameters:
+        path_number (int): The number of paths to find.
+
+        Returns:
+        list: A list of lists, where each inner list represents a path including the source and destination hosts.
+        """
+        paths = []
+        # Get the actual NetworkX graph
+        nx_graph = self.nx_graph.get_networkx_graph()
+
+        # Get all switch nodes
+        switch_nodes = [node for node in nx_graph.nodes if node.startswith("s")]
+
+        # Create a subgraph containing only switch nodes
+        sub_graph = nx_graph.subgraph(switch_nodes)
+
+        # Create a copy of the subgraph
+        graph_copy = sub_graph.copy()
+
+        # Find a fake path to determine the source and destination switches
+        fake_path = nx.dijkstra_path(nx_graph, self.source, self.destination)
+        source_switch = fake_path[1]
+        destination_switch = fake_path[-2]
+
+        # Find multiple paths between source_switch and destination_switch
+        for _ in range(path_number):
+            try:
+                # Find a path between the source and destination switch
+                path = nx.dijkstra_path(graph_copy, source_switch, destination_switch)
+
+                # Add the found path to the list of paths
+                # Include self.source at the start and self.destination at the end
+                paths.append([self.source] + path + [self.destination])
+
+                # Remove the edges of the found path to find alternate paths
+                for i in range(len(path) - 1):
+                    graph_copy.remove_edge(path[i], path[i + 1])
+
+            except nx.NetworkXNoPath:
+                break
+        # print(paths)
+        return paths
+
     def run(self):
         """Run the path-finding algorithms and start the network with generated rules."""
         vis_thread = threading.Thread(target=self.visualize_network)
@@ -132,4 +180,4 @@ class SDN_Network_Path_Finding_With_Qlearning:
 
 if __name__ == "__main__":
     x = SDN_Network_Path_Finding_With_Qlearning("h2", "h5")
-    x.run()
+    x.find_multiple_paths_dijkstra(3)
