@@ -111,3 +111,6 @@ class Network_Graph:
         plt.legend(handles=[switch_patch, host_patch])
         
         plt.show()
+
+    def get_networkx_graph(self):
+        return self.graph  # Return the internal NetworkX graph
