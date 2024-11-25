@@ -2,17 +2,19 @@ from mininet.net import Mininet
 from mininet.cli import CLI
 import csv
 import subprocess
+import random
 
 class Mininet_Network:
     def __init__(self):
         """
         Initialize the Mininet_Network object and create an empty network with switches and hosts.
 
-        This method also initializes empty lists for switches and hosts.
+        This method also initializes empty lists for switches and hosts and link properties.
         """
         self.network = Mininet()
         self.switches = []
         self.hosts = []
+        self.link_properties = []
 
     def create_n_switches(self, switch_numbers: int):
         """
@@ -74,34 +76,51 @@ class Mininet_Network:
                 
                 self.hosts.append(host)
 
-    def save_network_to_csv(self, csv_file_add: str):
+    def get_ip_for_node(self, node_name: str) -> str:
         """
-        Save the network topology, including links and IP addresses, to a CSV file.
+        Retrieve the IP address of a given node.
 
         Args:
-            csv_file_add (str): The path of the CSV file where the network topology will be saved.
+            node_name (str): The name of the node (host or switch).
+
+        Returns:
+            str: The IP address of the node, or None if not found.
         """
-        with open(csv_file_add, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Node1", "Node2", "Link Details", "IP Address"])
+        for host in self.hosts:
+            if host.name == node_name:
+                return host.IP()  # Use Mininet's `host.IP()` to get the IP address
+        return None
 
-            for link in self.network.links:
-                node1 = link.intf1.node.name  # Get the host or switch name
-                node2 = link.intf2.node.name
-                link_details = f"{link.intf1.name}, {link.intf2.name}"
+    def save_network_to_csv(self, filename:str="network_topology.csv"):
+        """
+        Save network topology information to a CSV file, including link properties.
 
-                # Check if node1 is a host
-                if node1.startswith("h"):
-                    host = self.network.get(node1)  # Get the host by its name
-                    ip_address = host.IP() if host else "N/A"  # Get the IP of the host
-                    writer.writerow([node1, node2, link_details, ip_address])
-                # Check if node2 is a host
-                elif node2.startswith("h"):
-                    host = self.network.get(node2)  # Get the host by its name
-                    ip_address = host.IP() if host else "N/A"  # Get the IP of the host
-                    writer.writerow([node1, node2, link_details, ip_address])
-                else:  # If both are switches, no IP address
-                    writer.writerow([node1, node2, link_details, "N/A"])
+        Args:
+            filename (str): The CSV file name to save the topology.
+        """
+        with open(filename, 'w', newline='') as csvfile:
+            fieldnames = ["Node1", "Node2", "Link Details", "IP Address", "Delay", "Bandwidth", "Loss"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+            writer.writeheader()
+
+            for link in self.link_properties:
+                node1, node2 = link["node1"], link["node2"]
+                delay = link["delay"]
+                bw = link["bw"]
+                loss = link["loss"]
+
+                writer.writerow({
+                    "Node1": node1,
+                    "Node2": node2,
+                    "Link Details": f"{node1}-eth0, {node2}-eth1",
+                    "IP Address": self.get_ip_for_node(link["node1"]),
+                    "Delay": delay,
+                    "Bandwidth": bw,
+                    "Loss": loss
+                })
+
+            print(f"Network saved to {filename}")
 
     def create_mesh_network(self, switch_number:int, host_number_per_switch:int):
         """
@@ -175,3 +194,51 @@ class Mininet_Network:
                 if node2.startswith("h") and ip_address != "N/A":
                     if nodes[node2].defaultIntf():  # Check if interface exists
                         nodes[node2].setIP(ip_address)
+
+    def generate_random_link_properties(self, num_links: int):
+        """
+        Generate random link properties for a given set of nodes in the network and update self.link_properties.
+
+        Args:
+            num_links (int): Number of links to create with random properties.
+        """
+        if len(self.switches) + len(self.hosts) < 2:
+            print("Not enough nodes to generate links.")
+            return
+
+        all_nodes = [node.name for node in self.switches + self.hosts]  # Collect names of all switches and hosts
+        generated_links = set()  # Track generated links to avoid duplicates
+
+        while len(self.link_properties) < num_links:
+            # Randomly pick two unique nodes
+            node1, node2 = random.sample(all_nodes, 2)
+
+            # Ensure the link is not already generated
+            link_tuple = tuple(sorted((node1, node2)))  # Use sorted tuple to avoid order issues
+            if link_tuple in generated_links:
+                continue
+
+            # Generate random link properties
+            delay = f"{random.randint(1, 20)}ms"  # Random delay between 1ms and 20ms
+            bw = random.choice([10, 50, 100, 1000])  # Random bandwidth in Mbps
+            loss = round(random.uniform(0.0, 2.0), 2)  # Random packet loss between 0% and 2%
+
+            # Append the generated properties to the list
+            self.link_properties.append({
+                "node1": node1,
+                "node2": node2,
+                "delay": delay,
+                "bw": bw,
+                "loss": loss
+            })
+
+            # Mark this link as generated
+            generated_links.add(link_tuple)
+
+
+if __name__ =="__main__":
+    x = Mininet_Network()
+    x.create_n_switches(25)
+    x.create_hosts_for_all_switches(2)
+    x.generate_random_link_properties(60)
+    x.save_network_to_csv()
