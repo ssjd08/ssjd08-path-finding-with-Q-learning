@@ -2,17 +2,19 @@ from mininet.net import Mininet
 from mininet.cli import CLI
 import csv
 import subprocess
+import random
 
 class Mininet_Network:
     def __init__(self):
         """
         Initialize the Mininet_Network object and create an empty network with switches and hosts.
 
-        This method also initializes empty lists for switches and hosts.
+        This method also initializes empty lists for switches and hosts and link properties.
         """
         self.network = Mininet()
         self.switches = []
         self.hosts = []
+        self.link_properties = []
 
     def create_n_switches(self, switch_numbers: int):
         """
@@ -73,35 +75,87 @@ class Mininet_Network:
                     print(f"Warning: {host.name} has no interface")
                 
                 self.hosts.append(host)
+                
+                # Add the host-switch link to self.link_properties
+                link_tuple = tuple(sorted((host.name, self.switches[i].name)))  # Ensure order doesn't matter
+                delay = random.randint(1, 20)  # Random delay between 1ms and 20ms
+                bw = random.choice([10, 50, 100, 1000])  # Random bandwidth in Mbps
+                loss = round(random.uniform(0.0, 2.0), 2)  # Random packet loss between 0% and 2%
 
-    def save_network_to_csv(self, csv_file_add: str):
+                # Add the link properties to self.link_properties
+                self.link_properties.append({
+                    "node1": host.name,
+                    "node2": self.switches[i].name,
+                    "delay": delay,
+                    "bw": bw,
+                    "loss": loss
+                })
+
+
+    def get_ip_for_node(self, node_name: str) -> str:
         """
-        Save the network topology, including links and IP addresses, to a CSV file.
+        Retrieve the IP address of a given node.
 
         Args:
-            csv_file_add (str): The path of the CSV file where the network topology will be saved.
-        """
-        with open(csv_file_add, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Node1", "Node2", "Link Details", "IP Address"])
+            node_name (str): The name of the node (host or switch).
 
+        Returns:
+            str: The IP address of the node, or None if not found.
+        """
+        for host in self.hosts:
+            if host.name == node_name:
+                return host.IP()  # Use Mininet's `host.IP()` to get the IP address
+        return "N/A"
+
+    def save_network_to_csv(self, filename: str = "network_topology.csv"):
+        """
+        Save the network topology to a CSV file, including all links with correct interface names.
+        Args:
+            filename (str): Name of the CSV file to save the topology.
+        """
+        with open(filename, 'w', newline='') as csvfile:
+            fieldnames = ["Node1", "Node2", "Link Details", "IP Address", "Delay(ms)", "Bandwidth", "Loss"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            # Iterate over each link in the network
             for link in self.network.links:
-                node1 = link.intf1.node.name  # Get the host or switch name
+                node1 = link.intf1.node.name
                 node2 = link.intf2.node.name
                 link_details = f"{link.intf1.name}, {link.intf2.name}"
 
-                # Check if node1 is a host
+                # Initialize default values
+                ip_address = "N/A"
+                delay = "N/A"
+                bw = "N/A"
+                loss = "N/A"
+
+                # Assign IP for host-to-switch links
                 if node1.startswith("h"):
-                    host = self.network.get(node1)  # Get the host by its name
-                    ip_address = host.IP() if host else "N/A"  # Get the IP of the host
-                    writer.writerow([node1, node2, link_details, ip_address])
-                # Check if node2 is a host
+                    ip_address = self.get_ip_for_node(node1)
                 elif node2.startswith("h"):
-                    host = self.network.get(node2)  # Get the host by its name
-                    ip_address = host.IP() if host else "N/A"  # Get the IP of the host
-                    writer.writerow([node1, node2, link_details, ip_address])
-                else:  # If both are switches, no IP address
-                    writer.writerow([node1, node2, link_details, "N/A"])
+                    ip_address = self.get_ip_for_node(node2)
+
+                # Match link properties if available
+                for prop in self.link_properties:
+                    if {node1, node2} == {prop["node1"], prop["node2"]}:
+                        delay = prop["delay"]
+                        bw = prop["bw"]
+                        loss = prop["loss"]
+
+                # Write row to CSV
+                writer.writerow({
+                    "Node1": node1,
+                    "Node2": node2,
+                    "Link Details": link_details,
+                    "IP Address": ip_address,
+                    "Delay(ms)": delay,
+                    "Bandwidth": bw,
+                    "Loss": loss
+                })
+
+        print(f"Network saved to {filename}")
+
 
     def create_mesh_network(self, switch_number:int, host_number_per_switch:int):
         """
@@ -123,7 +177,6 @@ class Mininet_Network:
             routing_commands_file (str): Path to the shell script containing routing commands to execute.
         """
         self.network.start()
-        self.save_network_to_csv("network_topology.csv")
         subprocess.run(["bash", routing_commands_file], check=True)
         CLI(self.network)
         self.network.stop()
@@ -175,3 +228,88 @@ class Mininet_Network:
                 if node2.startswith("h") and ip_address != "N/A":
                     if nodes[node2].defaultIntf():  # Check if interface exists
                         nodes[node2].setIP(ip_address)
+
+    def generate_random_link_properties(self, num_links_per_switch: int = 2):
+        """
+        Generate random link properties for a given set of switches in the network and update self.link_properties.
+        Args:
+            num_links_per_switch (int): Number of links to create per switch.
+        """
+        # Ensure there are enough switches to generate links
+        if len(self.switches) < 2:
+            print("Not enough switches to generate links.")
+            return
+        
+        # Dynamically calculate the total number of links based on the number of switches
+        num_links = len(self.switches) * num_links_per_switch
+        
+        # Collect the names of all switches (hosts are excluded)
+        switch_names = [switch.name for switch in self.switches]
+        
+        # Track generated links to avoid duplicates
+        generated_links = set()
+        
+        # Generate random links between switches
+        while len(self.link_properties) < num_links:
+            # Randomly pick two unique switches
+            node1, node2 = random.sample(switch_names, 2)
+            
+            # Ensure the link is not already generated
+            link_tuple = tuple(sorted((node1, node2)))  # Use sorted tuple to avoid order issues
+            if link_tuple in generated_links:
+                continue
+            
+            # Generate random link properties
+            delay = random.randint(1, 20)  # Random delay between 1ms and 20ms
+            bw = random.choice([10, 50, 100, 1000])  # Random bandwidth in Mbps
+            loss = round(random.uniform(0.0, 2.0), 2)  # Random packet loss between 0% and 2%
+            
+            # Append the generated properties to the list
+            self.link_properties.append({
+                "node1": node1,
+                "node2": node2,
+                "delay": delay,
+                "bw": bw,
+                "loss": loss
+            })
+        
+            # Add the link to the network using Mininet's getNodeByName method
+            node1_obj = self.network.getNodeByName(node1)  # Correct method to fetch node by name
+            node2_obj = self.network.getNodeByName(node2)  # Correct method to fetch node by name
+
+            # Make sure the nodes were found in the network
+            if node1_obj and node2_obj:
+                self.network.addLink(node1_obj, node2_obj)  # Add link to the network
+
+            # Mark this link as generated
+            generated_links.add(link_tuple)
+
+    def print_all_link_interfaces(self):
+        """
+        Prints all link interfaces in the network for debugging.
+        Args:
+            network: The Mininet network instance.
+        """
+        print("All Link Interfaces:")
+        for link in self.network.links:
+            node1 = link.intf1.node.name
+            node2 = link.intf2.node.name
+            intf1_name = link.intf1.name
+            intf2_name = link.intf2.name
+
+            print(f"Link between {node1} and {node2}:")
+            print(f"  - Interface 1: {intf1_name} (Node: {node1})")
+            print(f"  - Interface 2: {intf2_name} (Node: {node2})")
+        print("Done listing all link interfaces.")
+
+
+# debug usecase: 
+
+#if __name__ =="__main__":
+#    x = Mininet_Network()
+#    x.create_n_switches(20)
+#    x.create_hosts_for_all_switches(1)
+#    x.generate_random_link_properties()
+#    print(x.link_properties)
+#    x.save_network_to_csv()
+#    x.print_all_link_interfaces()
