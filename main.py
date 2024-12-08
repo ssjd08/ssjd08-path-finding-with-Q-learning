@@ -185,5 +185,6 @@ class SDN_Network_Path_Finding_With_Qlearning:
             thread.join()
 
 if __name__ == "__main__":
-    x = SDN_Network_Path_Finding_With_Qlearning("h2", "h5")
+    x = SDN_Network_Path_Finding_With_Qlearning("h2", "h1", 20, 1)
     x.visualize_network()
+    print(x.nx_graph.weighted_dijkstra_path_finding("h2", "h1"))
