@@ -8,7 +8,7 @@ import networkx as nx
 
 
 class SDN_Network_Path_Finding_With_Qlearning:
-    def __init__(self, source, destination):
+    def __init__(self, source, destination, network_switch_number:int=20, network_host_number_per_switch:int=2):
         """
         Initialize the SDN network with Q-learning and Dijkstra path-finding.
 
@@ -17,12 +17,18 @@ class SDN_Network_Path_Finding_With_Qlearning:
             destination (str): The destination host.
         """
         self.mininet = Mininet_Network()
-        self.mininet.create_mesh_network(4, 2)
+        self.mininet_setup(network_switch_number, network_host_number_per_switch)
         self.nx_graph = Network_Graph("network_topology.csv")
         self.q_learning = Q_Learning_Path_Finding(self.nx_graph, source, destination)
         self.source = source
         self.destination = destination
         self.threads = []
+
+    def mininet_setup(self, network_switch_number, network_host_number_per_switch):
+        self.mininet.create_n_switches(network_switch_number)
+        self.mininet.create_hosts_for_all_switches(network_host_number_per_switch)
+        self.mininet.generate_random_link_properties()
+        self.mininet.save_network_to_csv()
 
     def visualize_network(self):
         """Visualize the network graph."""
@@ -180,4 +186,4 @@ class SDN_Network_Path_Finding_With_Qlearning:
 
 if __name__ == "__main__":
     x = SDN_Network_Path_Finding_With_Qlearning("h2", "h5")
-    x.find_multiple_paths_dijkstra(3)
+    x.visualize_network()

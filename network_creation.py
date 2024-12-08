@@ -177,7 +177,6 @@ class Mininet_Network:
             routing_commands_file (str): Path to the shell script containing routing commands to execute.
         """
         self.network.start()
-        self.save_network_to_csv("network_topology.csv")
         subprocess.run(["bash", routing_commands_file], check=True)
         CLI(self.network)
         self.network.stop()
@@ -304,12 +303,13 @@ class Mininet_Network:
         print("Done listing all link interfaces.")
 
 
+# debug usecase: 
 
-if __name__ =="__main__":
-    x = Mininet_Network()
-    x.create_n_switches(20)
-    x.create_hosts_for_all_switches(1)
-    x.generate_random_link_properties()
-    #print(x.link_properties)
-    x.save_network_to_csv()
-    #x.print_all_link_interfaces()
+#if __name__ =="__main__":
+#    x = Mininet_Network()
+#    x.create_n_switches(20)
+#    x.create_hosts_for_all_switches(1)
+#    x.generate_random_link_properties()
+#    print(x.link_properties)
+#    x.save_network_to_csv()
+#    x.print_all_link_interfaces()
