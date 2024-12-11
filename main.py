@@ -91,8 +91,8 @@ class SDN_Network_Path_Finding_With_Qlearning:
         path = self.q_learning.Q_learning_path_finding(method=1)
         end_time = time.time()
         if path:
-            # self.generate_routing_commands(path, output_file="qlearning_forwarding_rules.sh")
-            pass
+            self.generate_routing_commands(path, output_file="qlearning_forwarding_rules.sh")
+            
         else:
             print("No path found between the given nodes")    
         print(f"Shortest path found using Q-learning: {path} in {end_time - start_time} seconds")
@@ -176,7 +176,7 @@ class SDN_Network_Path_Finding_With_Qlearning:
         os.chmod("dijkstra_forwarding_rules.sh", 0o755)
         os.chmod("qlearning_forwarding_rules.sh", 0o755)
 
-        self.mininet.start_network("dijkstra_forwarding_rules.sh")
+        #self.mininet.start_network("dijkstra_forwarding_rules.sh")
         self.stop()
 
     def stop(self):
@@ -186,5 +186,4 @@ class SDN_Network_Path_Finding_With_Qlearning:
 
 if __name__ == "__main__":
     x = SDN_Network_Path_Finding_With_Qlearning("h2", "h1", 20, 1)
-    x.visualize_network()
-    print(x.nx_graph.weighted_dijkstra_path_finding("h2", "h1"))
+    x.run()
