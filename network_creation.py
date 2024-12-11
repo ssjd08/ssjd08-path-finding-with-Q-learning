@@ -229,60 +229,55 @@ class Mininet_Network:
                     if nodes[node2].defaultIntf():  # Check if interface exists
                         nodes[node2].setIP(ip_address)
 
-    def generate_random_link_properties(self, num_links_per_switch: int = 2):
+    def generate_random_link_properties(self):
         """
-        Generate random link properties for a given set of switches in the network and update self.link_properties.
-        Args:
-            num_links_per_switch (int): Number of links to create per switch.
+        Generate random link properties to connect all switches in the network into one group.
+        This ensures every switch is directly connected to every other switch.
         """
         # Ensure there are enough switches to generate links
         if len(self.switches) < 2:
             print("Not enough switches to generate links.")
             return
-        
-        # Dynamically calculate the total number of links based on the number of switches
-        num_links = len(self.switches) * num_links_per_switch
-        
+
         # Collect the names of all switches (hosts are excluded)
         switch_names = [switch.name for switch in self.switches]
-        
+
         # Track generated links to avoid duplicates
         generated_links = set()
-        
-        # Generate random links between switches
-        while len(self.link_properties) < num_links:
-            # Randomly pick two unique switches
-            node1, node2 = random.sample(switch_names, 2)
-            
-            # Ensure the link is not already generated
-            link_tuple = tuple(sorted((node1, node2)))  # Use sorted tuple to avoid order issues
-            if link_tuple in generated_links:
-                continue
-            
-            # Generate random link properties
-            delay = random.randint(1, 20)  # Random delay between 1ms and 20ms
-            bw = random.choice([10, 50, 100, 1000])  # Random bandwidth in Mbps
-            loss = round(random.uniform(0.0, 2.0), 2)  # Random packet loss between 0% and 2%
-            
-            # Append the generated properties to the list
-            self.link_properties.append({
-                "node1": node1,
-                "node2": node2,
-                "delay": delay,
-                "bw": bw,
-                "loss": loss
-            })
-        
-            # Add the link to the network using Mininet's getNodeByName method
-            node1_obj = self.network.getNodeByName(node1)  # Correct method to fetch node by name
-            node2_obj = self.network.getNodeByName(node2)  # Correct method to fetch node by name
 
-            # Make sure the nodes were found in the network
-            if node1_obj and node2_obj:
-                self.network.addLink(node1_obj, node2_obj)  # Add link to the network
+        # Generate links to fully connect all switches (clique)
+        for i, node1 in enumerate(switch_names):
+            for node2 in switch_names[i + 1:]:  # Avoid duplicate or self-links
+                # Ensure the link is not already generated
+                link_tuple = tuple(sorted((node1, node2)))  # Use sorted tuple to avoid order issues
+                if link_tuple in generated_links:
+                    continue
 
-            # Mark this link as generated
-            generated_links.add(link_tuple)
+                # Generate random link properties
+                delay = random.randint(1, 20)  # Random delay between 1ms and 20ms
+                bw = random.choice([10, 50, 100, 1000])  # Random bandwidth in Mbps
+                loss = round(random.uniform(0.0, 2.0), 2)  # Random packet loss between 0% and 2%
+
+                # Append the generated properties to the list
+                self.link_properties.append({
+                    "node1": node1,
+                    "node2": node2,
+                    "delay": delay,
+                    "bw": bw,
+                    "loss": loss
+                })
+
+                # Add the link to the network using Mininet's getNodeByName method
+                node1_obj = self.network.getNodeByName(node1)  # Fetch node by name
+                node2_obj = self.network.getNodeByName(node2)  # Fetch node by name
+
+                # Make sure the nodes were found in the network
+                if node1_obj and node2_obj:
+                    self.network.addLink(node1_obj, node2_obj)  # Add link to the network
+
+                # Mark this link as generated
+                generated_links.add(link_tuple)
+
 
     def print_all_link_interfaces(self):
         """
