@@ -176,8 +176,8 @@ class SDN_Network_Path_Finding_With_Qlearning:
         os.chmod("dijkstra_forwarding_rules.sh", 0o755)
         os.chmod("qlearning_forwarding_rules.sh", 0o755)
 
-        self.mininet.start_network("dijkstra_forwarding_rules.sh")
-        self.stop()
+        #self.mininet.start_network("dijkstra_forwarding_rules.sh")
+        #self.stop()
 
     def stop(self):
         """Stop all threads."""
@@ -186,5 +186,4 @@ class SDN_Network_Path_Finding_With_Qlearning:
 
 if __name__ == "__main__":
     x = SDN_Network_Path_Finding_With_Qlearning("h2", "h1", 20, 1)
-    x.visualize_network()
-    print(x.nx_graph.weighted_dijkstra_path_finding("h2", "h1"))
+    x.run()

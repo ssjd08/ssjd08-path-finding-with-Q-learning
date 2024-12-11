@@ -33,7 +33,7 @@ class Q_Learning_Path_Finding:
         self.index_to_node = {i: node for i, node in enumerate(graph.nodes)}  # Index to node name
         self.source = self.node_to_index[source]
         self.destination = self.node_to_index[destination]
-        self.Q_table = np.zeros((len(graph.nodes), len(graph.nodes)))
+        self.Q_table = np.random.uniform(low=-1, high=1, size=(len(graph.nodes), len(graph.nodes)))
         self.lr = learning_rate
         self.dis = discount_rate
         self.er = exploration_rate
@@ -50,10 +50,15 @@ class Q_Learning_Path_Finding:
         Returns:
             int: Reward value based on the transition.
         """
-        if next_state == self.destination:
+        current_node = self.index_to_node[state]
+        next_node = self.index_to_node[next_state]
+        
+        if next_node == self.index_to_node[self.destination]:
             return 1000
-        elif self.graph.has_edge(state, next_state):
-            return 10
+        elif self.graph.graph.has_edge(current_node, next_node):
+            # Use the weight as a negative reward since lower costs are better
+            weight = self.graph.graph[current_node][next_node]['weight']
+            return max(100 - weight, 10)  # Reward inversely proportional to weight
         else:
             return -10
     
@@ -84,19 +89,20 @@ class Q_Learning_Path_Finding:
         current_node = self.index_to_node[current_node_index]
         random_number = np.random.rand()
 
-        # Explore:
+        # Explore
         if random_number < self.er:
             neighbors = list(self.graph.neighbors(current_node))
-            if not neighbors:  # Check if there are no neighbors
-                print(f"No neighbors for node {current_node}. Choosing the current node again.")
-                return current_node_index  # Return the current node index or handle it differently
-
+            if not neighbors:
+                return current_node_index  # Return the current node index
             neighbor_indices = [self.node_to_index[neighbor] for neighbor in neighbors]
-            return np.random.choice(neighbor_indices)
-
+            chosen = np.random.choice(neighbor_indices)
+            # print(f"Explore: Current={current_node}, Next={self.index_to_node[chosen]}")
+            return chosen
         # Exploit:
         else:
-            return np.argmax(self.Q_table[current_node_index])
+            chosen = np.argmax(self.Q_table[current_node_index])
+            # print(f"Exploit: Current={current_node}, Next={self.index_to_node[chosen]}")
+            return chosen
 
     def update_Q_table(self, current_node, next_node):
         """
@@ -115,7 +121,7 @@ class Q_Learning_Path_Finding:
         reward = self.calculate_reward(current_node, next_node)
         best_future_Q = np.max(self.Q_table[next_node])
         self.Q_table[current_node, next_node] += self.lr * (reward + self.dis * best_future_Q - self.Q_table[current_node, next_node])
-
+    
     def learn_with_source_and_destination(self, episodes=50000):
         """
         Train the Q-learning algorithm using a fixed source and destination.
@@ -132,13 +138,17 @@ class Q_Learning_Path_Finding:
         for i in range(episodes):
             # print(f"Learning with source and destination number{i}")
             current_node = self.source
-            while current_node != self.destination:
+            steps = 0  # Step counter to avoid infinite loops
+            max_steps = 500  # Set a reasonable maximum number of steps
+            while current_node != self.destination and steps < max_steps:
                 next_node = self.next_node(current_node)
                 self.update_Q_table(current_node, next_node)
                 current_node = next_node
-        
+                steps += 1
+            #if steps >= max_steps:
+                #print(f"Episode {i}: Reached maximum steps without finding destination.")
     
-    def learn_with_random_source_and_destination(self, episodes=50000):
+    def learn_with_random_source_and_destination(self, episodes=500):
         """
         Train the Q-learning algorithm using random source and destination nodes.
 
