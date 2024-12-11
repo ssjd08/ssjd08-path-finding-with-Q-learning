@@ -33,7 +33,7 @@ class Q_Learning_Path_Finding:
         self.index_to_node = {i: node for i, node in enumerate(graph.nodes)}  # Index to node name
         self.source = self.node_to_index[source]
         self.destination = self.node_to_index[destination]
-        self.Q_table = np.zeros((len(graph.nodes), len(graph.nodes)))
+        self.Q_table = np.random.uniform(low=-1, high=1, size=(len(graph.nodes), len(graph.nodes)))
         self.lr = learning_rate
         self.dis = discount_rate
         self.er = exploration_rate
@@ -83,21 +83,22 @@ class Q_Learning_Path_Finding:
         """
         current_node = self.index_to_node[current_node_index]
         random_number = np.random.rand()
-
         # Explore:
         if random_number < self.er:
-            neighbors = list(self.graph.neighbors(current_node))
-            if not neighbors:  # Check if there are no neighbors
-                print(f"No neighbors for node {current_node}. Choosing the current node again.")
-                return current_node_index  # Return the current node index or handle it differently
-
+            neighbors = list(self.graph.graph.neighbors(current_node))
+            if not neighbors:  # No neighbors
+                print(f"No neighbors for node {current_node}.")
+                return current_node_index
             neighbor_indices = [self.node_to_index[neighbor] for neighbor in neighbors]
-            return np.random.choice(neighbor_indices)
-
+            chosen = np.random.choice(neighbor_indices)
+            # print(f"Explore: Current={current_node}, Next={self.index_to_node[chosen]}")
+            return chosen
         # Exploit:
         else:
-            return np.argmax(self.Q_table[current_node_index])
-
+            chosen = np.argmax(self.Q_table[current_node_index])
+            # print(f"Exploit: Current={current_node}, Next={self.index_to_node[chosen]}")
+            return chosen
+            
     def update_Q_table(self, current_node, next_node):
         """
         Update the Q-table based on the current state, action, and resulting state.
@@ -153,20 +154,16 @@ class Q_Learning_Path_Finding:
             None: The function updates the Q-table in-place and doesn't return a value.
         """
         for i in range(episodes):
-            print(f"Learning with random source and destination number{i}")
-            current_node = np.random.randint(0, len(self.graph.nodes))
-            dest_node = np.random.randint(0, len(self.graph.nodes))
-
-            while current_node == dest_node:
-                dest_node = np.random.randint(0, len(self.graph.nodes))
-
-            max_steps = 1000
-            steps = 0
-            while current_node != dest_node and steps<max_steps:
+            current_node = self.source
+            steps = 0  # Step counter to avoid infinite loops
+            max_steps = 1000  # Set a reasonable maximum number of steps
+            while current_node != self.destination and steps < max_steps:
                 next_node = self.next_node(current_node)
                 self.update_Q_table(current_node, next_node)
                 current_node = next_node
                 steps += 1
+            # if steps >= max_steps:
+                # print(f"Episode {i}: Reached maximum steps without finding destination.")
 
     # def find_shortest_path(self, max_steps=100):
     #     path = [self.source]
