@@ -177,7 +177,7 @@ class SDN_Network_Path_Finding_With_Qlearning:
         os.chmod("qlearning_forwarding_rules.sh", 0o755)
 
         self.mininet.start_network("dijkstra_forwarding_rules.sh")
-        sgit elf.stop()
+        self.stop()
 
     def stop(self):
         """Stop all threads."""
