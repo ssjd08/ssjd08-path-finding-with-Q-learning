@@ -91,8 +91,8 @@ class SDN_Network_Path_Finding_With_Qlearning:
         path = self.q_learning.Q_learning_path_finding(method=1)
         end_time = time.time()
         if path:
-            # self.generate_routing_commands(path, output_file="qlearning_forwarding_rules.sh")
-            pass
+            self.generate_routing_commands(path, output_file="qlearning_forwarding_rules.sh")
+            
         else:
             print("No path found between the given nodes")    
         print(f"Shortest path found using Q-learning: {path} in {end_time - start_time} seconds")
