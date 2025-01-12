@@ -273,8 +273,9 @@ class Mininet_Network:
 
                 # Make sure the nodes were found in the network
                 if node1_obj and node2_obj:
-                    self.network.addLink(node1_obj, node2_obj)  # Add link to the network
-
+                    # Add link with properties to the network
+                    self.network.addLink(node1_obj, node2_obj, bw=bw, delay=delay, loss=loss)
+                    
                 # Mark this link as generated
                 generated_links.add(link_tuple)
 
