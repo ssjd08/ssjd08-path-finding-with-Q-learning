@@ -1,7 +1,6 @@
 import networkx as nx
 import csv
 import matplotlib.pyplot as plt
-print(nx.__version__)
 
 class Network_Graph:
     def __init__(self, csv_file):
