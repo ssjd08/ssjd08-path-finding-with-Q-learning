@@ -1,7 +1,7 @@
 import networkx as nx
 import csv
 import matplotlib.pyplot as plt
-print(nx.__version__)
+# print(nx.__version__)
 
 class Network_Graph:
     def __init__(self, csv_file):
@@ -64,16 +64,20 @@ class Network_Graph:
             for row in reader:
                 node1 = row["Node1"]
                 node2 = row["Node2"]
+                link_details = row["Link Details"]
                 delay = float(row["Delay(ms)"])
                 bandwidth = float(row["Bandwidth"])
                 loss = float(row["Loss"])
                 ip = row.get("IP Address", None)
                 # Calculate the edge cost using a weighted sum (adjust alpha, beta, gamma as needed)
-                cost = 0.5 * delay + 0.3 * (1 / bandwidth) + 0.2 * loss
+                # cost = 0.5 * delay + 0.3 * (1 / bandwidth) + 0.2 * loss
 
-                # Add the edge with the computed cost as the weight
-                self.graph.add_edge(node1, node2, weight=cost, delay=delay, bandwidth=bandwidth, loss=loss)
+                # Add the   edge with the computed cost as the weight
+                self.graph.add_edge(node1, node2, delay=delay, bandwidth=bandwidth, loss=loss)
 
+                # Store link details for the edge
+                self.link_details[(node1, node2)] = link_details
+                
                 # Store IP addresses for hosts
                 if node1.startswith('h'):  # If node1 is a host
                     self.IPs[node1] = ip
@@ -153,3 +157,45 @@ class Network_Graph:
             return path
         except nx.NetworkXNoPath:
             return "No path found between the given nodes"
+        
+    
+    def find_multiple_paths_dijkstra(self, path_number):
+        """
+        Find multiple paths between the first and last switches in the network using Dijkstra's algorithm.
+        Include the source and destination hosts in the paths.
+
+        Parameters:
+        path_number (int): The number of paths to find.
+
+        Returns:
+        list: A list of lists, where each inner list represents a path including the source and destination hosts.
+        """
+        paths = []
+        
+        self.categorize_nodes()
+        switch_graph = self.graph.subgraph(self.switches).copy()
+
+        try:
+            # Find an initial path to determine source and destination switches
+            fake_path = nx.dijkstra_path(self.graph, self.hosts[0], self.hosts[-1])
+            source_switch = fake_path[1]
+            destination_switch = fake_path[-2]
+        except nx.NetworkXNoPath:
+            print("No path found between source and destination hosts.")
+            return []
+
+        # Find multiple paths
+        for _ in range(path_number):
+            try:
+                path = nx.dijkstra_path(switch_graph, source_switch, destination_switch)
+                paths.append([self.hosts[0]] + path + [self.hosts[-1]])
+
+                # Remove edges to find alternative paths
+                for i in range(len(path) - 1):
+                    if switch_graph.has_edge(path[i], path[i + 1]):
+                        switch_graph.remove_edge(path[i], path[i + 1])
+
+            except nx.NetworkXNoPath:
+                break
+
+        return paths
